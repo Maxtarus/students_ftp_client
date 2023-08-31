@@ -5,7 +5,7 @@ import java.io.IOException;
 public class Main {
     public static void main(String[] args) throws IOException {
         FtpConnection ftpConnection = new FtpConnection();
-        ftpConnection.doConnect("localhost", 2121);
+        ftpConnection.doConnect("localhost", 2121, "admin", "admin");
 //        System.out.println(ftpConnection.list());
         ftpConnection.retr("students.txt");
 

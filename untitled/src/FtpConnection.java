@@ -162,9 +162,9 @@ public class FtpConnection {
             passv();
         }
 
-        String fullPath = pwd() + "/" + fileName;
-        String response = reader.readLine();
+        String fullPath = pwd() + fileName;
         sendLine("RETR " + fullPath);
+        String response = reader.readLine();
 
         if (!response.startsWith("150")) {
             throw new IOException("Unable to download file from the remote server");
