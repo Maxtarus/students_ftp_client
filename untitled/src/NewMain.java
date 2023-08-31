@@ -5,14 +5,24 @@ import static java.lang.System.exit;
 
 public class NewMain {
     private static String readFile(BufferedReader reader) {
-
+        StringBuilder text = new StringBuilder();
+        try {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String trimmedLine = line.trim();
+                text.append(trimmedLine);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return text.toString();
     }
 
     public static void main(String[] args) throws FileNotFoundException {
         String inputFileName = "students.txt";
         BufferedReader reader = new BufferedReader(new FileReader(inputFileName));
         String jsonString = readFile(reader);
-        Map<Integer, String> students = parseJson(reader);
+        Map<String, Object> students = parseJson(jsonString);
 
         String[] options = {
                 "1.\tПолучить список студентов по имени",
@@ -24,46 +34,46 @@ public class NewMain {
 
         Scanner scanner = new Scanner(System.in);
         int option;
-        while (true) {
-            printMenu(options);
-            option = scanner.nextInt();
-            switch (option){
-                case 1:
-                    List<String> studentsList = getStudentsByName(students);
-                    System.out.println(studentsList);
-                    break;
-                case 2:
-                    System.out.print("Введите id студента: ");
-                    int getId = scanner.nextInt();
-                    if (getId > students.size()) {
-                        System.out.println("Студента с таким id не существует!");
-                        break;
-                    } else {
-                        String student = getStudentById(students, getId);
-                        System.out.println("Имя студента с id=" + getId + ": " + student);
-                    }
-                    break;
-                case 3:
-                    System.out.print("Введите имя нового студента: ");
-                    String studentName = scanner.next();
-                    addStudent(students, studentName);
-                    break;
-                case 4:
-                    System.out.print("Введите id студента: ");
-                    int delId = scanner.nextInt();
-                    if (delId > students.size()) {
-                        System.out.println("Студента с таким id не существует!");
-                        break;
-                    } else {
-                        deleteStudentById(students, delId);
-                        System.out.println("Студент с id=" + delId + "успешно удалён");
-                        System.out.println(students);
-                    }
-                    break;
-                case 5:
-                    exit(0);
-            }
-        }
+//        while (true) {
+//            printMenu(options);
+//            option = scanner.nextInt();
+//            switch (option){
+//                case 1:
+//                    List<String> studentsList = getStudentsByName(students);
+//                    System.out.println(studentsList);
+//                    break;
+//                case 2:
+//                    System.out.print("Введите id студента: ");
+//                    int getId = scanner.nextInt();
+//                    if (getId > students.size()) {
+//                        System.out.println("Студента с таким id не существует!");
+//                        break;
+//                    } else {
+//                        String student = getStudentById(students, getId);
+//                        System.out.println("Имя студента с id=" + getId + ": " + student);
+//                    }
+//                    break;
+//                case 3:
+//                    System.out.print("Введите имя нового студента: ");
+//                    String studentName = scanner.next();
+//                    addStudent(students, studentName);
+//                    break;
+//                case 4:
+//                    System.out.print("Введите id студента: ");
+//                    int delId = scanner.nextInt();
+//                    if (delId > students.size()) {
+//                        System.out.println("Студента с таким id не существует!");
+//                        break;
+//                    } else {
+//                        deleteStudentById(students, delId);
+//                        System.out.println("Студент с id=" + delId + "успешно удалён");
+//                        System.out.println(students);
+//                    }
+//                    break;
+//                case 5:
+//                    exit(0);
+//            }
+//        }
     }
 
     public static void printMenu(String[] options){
