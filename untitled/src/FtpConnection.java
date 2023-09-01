@@ -16,9 +16,9 @@ public class FtpConnection {
     public FtpConnection() {
     }
 
-    public void doConnect(String host, int portNumber) throws IOException {
-        doConnect(host, portNumber, "anonymous", "anonymous");
-    }
+//    public void doConnect(String host, int portNumber) throws IOException {
+//        doConnect(host, portNumber, "anonymous", "anonymous");
+//    }
 
     public boolean doConnect(String host, int port, String user, String password) throws IOException {
         if (socket != null) {

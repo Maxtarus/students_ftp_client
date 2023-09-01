@@ -14,7 +14,7 @@ public class Main {
         try (BufferedReader reader = new BufferedReader(new FileReader(inputFileName))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                System.out.println(line + "\n");
+                System.out.println(line);
             }
         }
         catch (IOException e) {

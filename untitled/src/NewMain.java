@@ -18,22 +18,35 @@ public class NewMain {
         return text.toString();
     }
 
-    public static void main(String[] args) throws FileNotFoundException {
+    public static void main(String[] args) throws IOException {
+//        FtpConnection ftpConnection = new FtpConnection();
+//        ftpConnection.doConnect("localhost", 2121, "anonymous", "anonymous");
+//        ftpConnection.retr("students.txt");
         String inputFileName = "students.txt";
         BufferedReader reader = new BufferedReader(new FileReader(inputFileName));
         String jsonString = readFile(reader);
-        Map<String, Object> students = parseJson(jsonString);
 
-        String[] options = {
-                "1.\tПолучить список студентов по имени",
-                "2.\tПолучение информации о студенте по id",
-                "3.\tДобавить нового студента",
-                "4.\tУдаление студента по id",
-                "5.\tЗавершение работы"
-        };
+        jsonString = jsonString.replaceAll("\\s", "");
+        jsonString = jsonString.substring(13, jsonString.length()-2);
 
-        Scanner scanner = new Scanner(System.in);
-        int option;
+        System.out.println(jsonString);
+        String[] jsonObjects = jsonString.split("\\},");
+//        for (String jsonObject : jsonObjects)
+//            System.out.println(jsonObject + '\n');
+
+        List<Map<String, Object>> studentsMapsList = parseJson(jsonObjects);
+        System.out.println(studentsMapsList);
+
+//        String[] options = {
+//                "1.\tПолучить список студентов по имени",
+//                "2.\tПолучение информации о студенте по id",
+//                "3.\tДобавить нового студента",
+//                "4.\tУдаление студента по id",
+//                "5.\tЗавершение работы"
+//        };
+//
+//        Scanner scanner = new Scanner(System.in);
+//        int option;
 //        while (true) {
 //            printMenu(options);
 //            option = scanner.nextInt();
@@ -83,49 +96,57 @@ public class NewMain {
         System.out.print("Выберите действие: ");
     }
 
-    public static Map<Integer, String> JSONtoMap(String file) {
-        Map<Integer, String> map = new HashMap<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String trimmedLine = line.trim();
-                if (trimmedLine.startsWith("\"id\"")) {
-                    Integer id = Integer.parseInt(trimmedLine.substring(6, trimmedLine.length()-1));
-                    line = reader.readLine().trim();
-                    String name = line.substring(9, line.length()-1);
-                    map.put(id, name);
-                }
+//    public static Map<Integer, String> JSONtoMap(String file) {
+//        Map<Integer, String> map = new HashMap<>();
+//        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+//            String line;
+//            while ((line = reader.readLine()) != null) {
+//                String trimmedLine = line.trim();
+//                if (trimmedLine.startsWith("\"id\"")) {
+//                    Integer id = Integer.parseInt(trimmedLine.substring(6, trimmedLine.length()-1));
+//                    line = reader.readLine().trim();
+//                    String name = line.substring(9, line.length()-1);
+//                    map.put(id, name);
+//                }
+//            }
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        return map;
+//    }
+
+    public static List<Map<String, Object>> parseJson(String[] jsonObjects) {
+
+        List<Map<String, Object>> jsonMapsList = new ArrayList<>();
+
+        for (String jsonObject : jsonObjects) {
+            Map<String, Object> jsonMap = new HashMap<>();
+            String jsonString = jsonObject.replaceAll("\\s", "");
+
+            // Удаляем начальные и конечные фигурные скобки (если есть)
+            if (jsonString.startsWith("{")) {
+                jsonString = jsonString.substring(1);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return map;
-    }
+            if (jsonString.endsWith("}")) {
+                jsonString = jsonString.substring(0, jsonString.length()-1);
+            }
 
-    public static Map<String, Object> parseJson(String jsonString) {
-        Map<String, Object> jsonMap = new HashMap<>();
-        jsonString = jsonString.replaceAll("\\s", "");
+            String[] keyValuePairs = jsonString.split(",");
+            for (String pair : keyValuePairs) {
+                String[] keyValue = pair.split(":", 2);
+                String key = keyValue[0].replaceAll("\"", "");
+                String value = keyValue[1];
 
-        // Удаляем начальные и конечные фигурные скобки (если есть)
-        if (jsonString.startsWith("{")) {
-            jsonString = jsonString.substring(1);
-        }
-        if (jsonString.endsWith("}")) {
-            jsonString = jsonString.substring(0, jsonString.length()-1);
-        }
+                // Рекурсивно обрабатываем значение
+                Object parsedValue = parseValue(value);
+                jsonMap.put(key, parsedValue);
 
-        String[] keyValuePairs = jsonString.split(",");
-        for (String pair : keyValuePairs) {
-            String[] keyValue = pair.split(":", 2);
-            String key = keyValue[0].replaceAll("\"", "");
-            String value = keyValue[1];
-
-            // Рекурсивно обрабатываем значение
-            Object parsedValue = parseValue(value);
-            jsonMap.put(key, parsedValue);
+            }
+            jsonMapsList.add(jsonMap);
         }
 
-        return jsonMap;
+
+        return jsonMapsList;
     }
 
     public static Object parseValue(String value) {
@@ -150,9 +171,7 @@ public class NewMain {
             return Boolean.parseBoolean(value);
         }
 
-        // Если не является ни строкой, ни числом, ни boolean,
-        // то обрабатываем как вложенный JSON объект
-        return parseJson(value);
+        return null;
     }
 
     public static List<String> getStudentsByName(Map<Integer, String> students) {
