@@ -1,3 +1,5 @@
+package com.infotecsacademy.java;
+
 public class MenuPrinter {
     public static final String[] options = {
             "1.\tПолучить список студентов по имени;",

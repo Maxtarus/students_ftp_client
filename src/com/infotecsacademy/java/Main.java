@@ -1,6 +1,7 @@
+package com.infotecsacademy.java;
+
 import java.io.*;
 import java.util.*;
-
 import static java.lang.System.exit;
 
 public class Main {
