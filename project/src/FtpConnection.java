@@ -1,104 +1,66 @@
 import java.io.*;
+import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.util.StringTokenizer;
 
 public class FtpConnection {
-
     private Socket socket;
     private BufferedReader reader;
     private Socket dataSocket;
+    private ServerSocket serverSocket;
     private BufferedWriter writer;
     private boolean isPassive;
     private String ip;
     private int port;
 
-    public FtpConnection() {
+    public FtpConnection(boolean isPassive) {
+        this.isPassive = isPassive;
+        this.port = 21;
     }
 
-//    public void doConnect(String host, int portNumber) throws IOException {
-//        doConnect(host, portNumber, "anonymous", "anonymous");
-//    }
-
-    public boolean doConnect(String host, int port, String user, String password) throws IOException {
+    public void connect(String address, String user, String password) throws IOException {
         if (socket != null) {
-            throw new IOException("FTP session already initiated, please disconnect first!");
+            throw new IOException("Сеанс FTP уже запущен, пожалуйста, сначала отключитесь!");
         }
 
-        socket = new Socket(host, port);
+        socket = new Socket(address, port);
         reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-
         String hostResponse = reader.readLine();
 
         if (!hostResponse.startsWith("220")) {
-            throw new IOException("Received unknown response when connecting: " + hostResponse);
+            throw new IOException("Получен неизвестный ответ при подключении: " + hostResponse);
         }
 
-        sendLine("USER " + user);
-
+        sendCommand("USER " + user);
         hostResponse = reader.readLine();
+
         if (!hostResponse.startsWith("331")) {
-            throw new IOException("Received unknown response providing username: " + hostResponse);
+            throw new IOException("Получен неизвестный ответ при подключении: " + hostResponse);
         }
 
-        sendLine("PASS " + password);
+        sendCommand("PASS " + password);
         hostResponse = reader.readLine();
 
         if (!hostResponse.startsWith("230")) {
-            if (hostResponse.startsWith("530")) {
-                return false;
-            } else {
-                throw new IOException("Received unknown response when providing password: " + hostResponse);
-            }
+            throw new IOException("Получен неизвестный ответ при подключении: " + hostResponse);
         }
-        return true;
     }
 
-    public synchronized void disconnect() throws IOException {
-
+    public void disconnect() throws IOException {
         try {
-            sendLine("QUIT");
+            sendCommand("QUIT");
         } finally {
             socket.close();
             socket = null;
         }
     }
 
-    public String list() throws IOException {
-        if (!isPassive) {
-            passv();
-        }
-
-        sendLine("LIST");
-        String response = reader.readLine();
-
-        if (!response.startsWith("150")) {
-            throw new IOException("Cannot list the remote directory");
-        }
-
-        BufferedInputStream input = new BufferedInputStream(dataSocket.getInputStream());
-        byte[] buffer = new byte[4096];
-        int bytesRead;
-        String content = null;
-
-        while ((bytesRead = input.read(buffer)) != -1) {
-            content = new String(buffer, 0, bytesRead);
-        }
-
-//        input.close();
-        response = reader.readLine();
-
-        if (response.startsWith("226")) {
-            return content;
-        } else {
-            throw new IOException("Error");
-        }
-    }
-
-    private void sendLine(String command) throws IOException {
+    private void sendCommand(String command) throws IOException {
         if (socket == null) {
-            throw new IOException("Not connected to a host");
+            throw new IOException("Нет подключения к хосту.");
         }
 
         try {
@@ -110,13 +72,13 @@ public class FtpConnection {
         }
     }
 
-    public boolean passv() throws IOException {
+    public void enterLocalPassiveMode() throws IOException {
 
-        sendLine("PASV");
+        sendCommand("PASV");
         String response = reader.readLine();
 
         if (!response.startsWith("227 ")) {
-            throw new IOException("Could not request PASSIVE mode: " + response);
+            throw new IOException("Не удалось запросить пассивный режим: " + response);
         }
 
         ip = null;
@@ -135,14 +97,37 @@ public class FtpConnection {
             }
         }
         dataSocket = new Socket(ip, port);
-        isPassive = true;
 
-        return true;
     }
 
-    public String pwd() throws IOException {
+    public void enterLocalActiveMode() throws IOException {
+        InetAddress address = InetAddress.getLocalHost();
+        int index = address.toString().indexOf('/');
+        String ip = address.toString().substring(index+1);
+        ip = ip.replace(".", ",");
+        serverSocket = new ServerSocket(0);
+        port = serverSocket.getLocalPort();
+        String binaryPort = String.format("%16s", Integer.toBinaryString(port)).replaceAll(" ", "0");
+        String firstByte = binaryPort.substring(0,8);
+        String secondByte = binaryPort.substring(8,16);
+        int firstByteNumber = Integer.parseInt(firstByte, 2);
+        int secondByteNumber = Integer.parseInt(secondByte, 2);
+        StringBuilder ipAndPort = new StringBuilder()
+                .append(ip).append(",")
+                .append(firstByteNumber)
+                .append(",")
+                .append(secondByteNumber);
+        sendCommand("PORT " + ipAndPort);
+        String response = reader.readLine();
 
-        sendLine("PWD");
+        if (!response.startsWith("200 ")) {
+            throw new IOException("Could not request ACTIVE mode: " + response);
+        }
+    }
+
+    public String getCurrentDirectory() throws IOException {
+
+        sendCommand("PWD");
         String dir = null;
         String response = reader.readLine();
 
@@ -156,19 +141,26 @@ public class FtpConnection {
         return dir;
     }
 
-    public boolean retr(String fileName) throws IOException {
+    public void retrieve(String fileName) throws IOException {
 
-        if (!isPassive) {
-            passv();
+        if (isPassive) {
+            enterLocalPassiveMode();
+        } else {
+            enterLocalActiveMode();
         }
 
-        String fullPath = pwd() + fileName;
-        sendLine("RETR " + fullPath);
+        String fullPath = getCurrentDirectory() + fileName;
+        sendCommand("RETR " + fullPath);
+        if (!isPassive) {
+            dataSocket = serverSocket.accept();
+        }
+
         String response = reader.readLine();
 
         if (!response.startsWith("150")) {
             throw new IOException("Unable to download file from the remote server");
         }
+
 
         BufferedInputStream input = new BufferedInputStream(dataSocket.getInputStream());
         BufferedOutputStream output = new BufferedOutputStream(Files.newOutputStream(new File(fileName).toPath()));
@@ -185,17 +177,8 @@ public class FtpConnection {
         input.close();
         response = reader.readLine();
 
-        return checkFileOperationsStatus(response);
-
-    }
-
-    private boolean checkFileOperationsStatus(String response) throws IOException {
         if (!response.startsWith("226")) {
-            throw new IOException("Error");
-        } else {
-            isPassive = false;
-            return response.startsWith("226 ");
+            throw new IOException("Ошибка");
         }
-
     }
 }
